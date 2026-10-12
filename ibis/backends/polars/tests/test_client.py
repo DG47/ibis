@@ -82,3 +82,19 @@ def test_compile_with_memtable(con):
     t = ibis.memtable({"a": [1, 2, 3], "b": [4, 5, 6]})
     result = con.compile(t)
     assert isinstance(result, pl.LazyFrame)
+
+
+def test_cast_string_to_timestamp_seconds(con):
+    t = ibis.memtable({"s": ["2023-01-07 13:20:05.561"]})
+    result = con.execute(t.s.cast("timestamp(0)"))
+    assert result.iat[0] == pd.Timestamp("2023-01-07 13:20:05")
+
+
+@pytest.mark.parametrize("to_type", ["timestamp", "timestamp(0)", "timestamp(9)"])
+def test_between_string_timestamp_bounds(con, to_type):
+    # bounds should be parsed at the same precision as the column, so a value
+    # is always between itself
+    value = "2023-01-07 13:20:05.561000231"
+    t = ibis.memtable({"s": [value]})
+    result = con.execute(t.s.cast(to_type).between(value, value))
+    assert result.iat[0]
